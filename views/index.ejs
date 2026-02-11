@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= config.seo.title %></title>
+    <meta name="description" content="<%= config.seo.description %>">
+    <meta name="keywords" content="<%= config.seo.keywords %>">
+    <meta property="og:title" content="<%= config.seo.title %>" />
+    <meta property="og:description" content="<%= config.seo.description %>" />
+    <meta name="theme-color" content="#0f1117">
+    <meta name="msapplication-TileColor" content="#0f1117">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Favicon and icons -->
+    
+    <!-- Skip to main content link for accessibility -->
+    <style>
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 6px;
+            background: #007bff;
+            color: white;
+            padding: 8px;
+            text-decoration: none;
+            border-radius: 4px;
+            z-index: 1000;
+            font-weight: 600;
+        }
+        .skip-link:focus {
+            top: 6px;
+        }
+    </style>
+    
+    <!-- Preload critical resources -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="/css/style.css" as="style">
+    <link rel="preload" href="<%= config.profile.avatar %>" as="image" fetchpriority="high">
+    <% config.linkSections.forEach(section => { %>
+    <% section.links.forEach(link => { %>
+    <link rel="preload" href="/icons/<%= link.icon %>.svg" as="image">
+    <% }); %>
+    <% }); %>
+    
+    <!-- DNS prefetch for external domains -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="//fonts.gstatic.com">
+    
+    <!-- Preconnect to improve connection speed -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    
+    <!-- Critical CSS inline -->
+    <style>
+        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#0f1117;color:#fff;min-height:100vh}
+        .container{max-width:480px;margin:0 auto;padding:20px}
+        .avatar{width:120px;height:120px;border-radius:50%;object-fit:cover}
+        .name{font-size:1.75rem;font-weight:700;margin:16px 0 8px}
+        .bio{color:rgba(255,255,255,0.7);margin-bottom:16px}
+        .social-icons{display:flex;gap:12px;justify-content:center;margin-bottom:32px}
+        .social-icon{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:transform 0.3s ease}
+        .social-icon:hover{transform:translateY(-3px)}
+        .section-title{color:rgba(255,255,255,0.6);font-size:0.85rem;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;display:block}
+        .links-grid{display:flex;flex-direction:column;gap:12px;margin-bottom:24px}
+        .link-card{display:flex;align-items:center;padding:16px;background:rgba(255,255,255,0.05);border-radius:16px;text-decoration:none;color:#fff;border:1px solid rgba(255,255,255,0.1);transition:all 0.3s ease}
+        .link-card:hover{transform:translateY(-2px);background:rgba(255,255,255,0.08)}
+        .link-icon{font-size:1.5rem;margin-right:16px;width:32px;text-align:center}
+        .link-content{flex:1}
+        .link-title{font-weight:600;font-size:1rem}
+        .link-subtitle{font-size:0.85rem;color:rgba(255,255,255,0.6)}
+        .link-arrow{color:rgba(255,255,255,0.4)}
+        .footer{text-align:center;margin-top:32px;padding-bottom:20px}
+        .footer a{color:rgba(255,255,255,0.5);text-decoration:none;font-size:0.85rem;transition:color 0.3s ease}
+        .footer a:hover{color:rgba(255,255,255,0.8)}
+        /* Captcha overlay - hidden initially */
+        .captcha-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,17,21,0.95);backdrop-filter:blur(10px);z-index:1000;display:none}
+        .captcha-overlay:not(.hidden){display:flex;align-items:center;justify-content:center}
+    </style>
+    
+    <!-- Async load non-critical CSS -->
+    <link rel="stylesheet" href="/css/style.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'">
+    
+    <noscript>
+        <link rel="stylesheet" href="/css/style.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    </noscript>
+</head>
+<body>
+    <!-- Skip to main content link -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <!-- Captcha Overlay -->
+    <div class="captcha-overlay hidden" id="captchaOverlay" role="dialog" aria-modal="true" aria-labelledby="captcha-title" aria-describedby="captcha-instruction">
+        <div class="captcha-container">
+            <h2 id="captcha-title" class="captcha-title">Slider Puzzle</h2>
+            <p id="captcha-instruction" class="captcha-instruction">Geser bola ke dalam kotak hijau!</p>
+            
+            <div class="captcha-slider-track" id="captchaTrack" role="application" aria-label="Captcha slider puzzle">
+                <div class="captcha-target-zone" id="captchaTarget" aria-label="Target zone"></div>
+                <div class="captcha-ball" id="captchaBall" aria-label="Draggable ball" tabindex="0"></div>
+            </div>
+            
+            <div class="captcha-status" id="captchaStatus" aria-live="polite" aria-atomic="true"></div>
+            <button class="captcha-reset" id="captchaReset" aria-label="Reset captcha puzzle">Reset</button>
+        </div>
+    </div>
+
+    <!-- Animated background blobs - decorative -->
+    <div class="bg-blob bg-blob-1" aria-hidden="true"></div>
+    <div class="bg-blob bg-blob-2" aria-hidden="true"></div>
+    <div class="bg-blob bg-blob-3" aria-hidden="true"></div>
+    
+    <!-- Snow Effect Container - decorative -->
+    <div id="snow-container" aria-hidden="true"></div>
+    
+    <div class="container">
+        <!-- Main content -->
+        <main id="main-content">
+            <!-- Profile Header -->
+            <header class="profile-header">
+                <div class="avatar-wrapper">
+                    <img src="<%= config.profile.avatar %>"
+                         alt="<%= config.profile.name %> - Profile Avatar"
+                         class="avatar"
+                         width="120"
+                         height="120"
+                         loading="eager"
+                         decoding="async"
+                         fetchpriority="high"
+                         onerror="this.src='/img/avatar-placeholder.png'">
+                    <span class="status-indicator" aria-hidden="true"></span>
+                </div>
+                <div class="name-container">
+                    <h1 class="name"><%= config.profile.name %></h1>
+                    <% if (config.profile.verified) { %>
+                    <span class="verified" aria-label="Verified account">
+                        <i class="fas fa-check-circle" aria-hidden="true"></i>
+                    </span>
+                    <% } %>
+                </div>
+                <p class="bio"><%= config.profile.bio %></p>
+                
+                <!-- Social Media Icons -->
+                <nav class="social-icons" aria-label="Social media links">
+                    <% config.socialMedia.forEach(social => { %>
+                    <a href="<%= social.url %>" 
+                       class="social-icon" 
+                       title="<%= social.name %>"
+                       aria-label="Visit <%= social.name %> profile (opens in new tab)"
+                       data-color="<%= social.color %>"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       <% if (social.colorDark) { %>data-color-dark="<%= social.colorDark %>"<% } %>>
+                        <i class="<%= social.icon %>" aria-hidden="true"></i>
+                    </a>
+                    <% }); %>
+                </nav>
+            </header>
+
+            <!-- Link Sections -->
+            <% config.linkSections.forEach(section => { %>
+            <section class="section-divider" aria-labelledby="section-<%= section.title.toLowerCase().replace(/\s+/g, '-') %>">
+                <h2 id="section-<%= section.title.toLowerCase().replace(/\s+/g, '-') %>" class="section-title"><%= section.title %></h2>
+            </section>
+
+            <div class="links-grid" role="list">
+                <% section.links.forEach(link => { %>
+                <a href="<%= link.url %>" 
+                   class="link-card"
+                   role="listitem"
+                   aria-label="<%= link.title %> - <%= link.subtitle %> (opens in new tab)"
+                   data-color="<%= link.color %>"
+                   target="_blank"
+                   rel="noopener noreferrer">
+                    <i class="<%= link.icon %> link-icon" aria-hidden="true"></i>
+                    <div class="link-content">
+                        <div class="link-title"><%= link.title %></div>
+                        <div class="link-subtitle"><%= link.subtitle %></div>
+                    </div>
+                    <i class="fas fa-arrow-right link-arrow" aria-hidden="true"></i>
+                </a>
+                <% }); %>
+            </div>
+            <% }); %>
+
+            <!-- Spotify Section -->
+            <% if (config.spotify.enabled) { %>
+            <section class="section-divider" aria-labelledby="spotify-section">
+                <h2 id="spotify-section" class="section-title"><%= config.spotify.title %></h2>
+            </section>
+
+            <div class="spotify-section">
+                <div class="spotify-header">
+                    <i class="fab fa-spotify spotify-icon" aria-hidden="true"></i>
+                    <span class="spotify-title"><%= config.spotify.title %></span>
+                </div>
+                <iframe class="spotify-embed" 
+                        src="<%= config.spotify.playlistUrl %>" 
+                        title="Spotify playlist embed"
+                        allowfullscreen 
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                        loading="lazy"
+                        width="100%"
+                        height="152"
+                        frameborder="0">
+                </iframe>
+            </div>
+            <% } %>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <a href="<%= config.footer.link %>" 
+               aria-label="<%= config.footer.text %> (opens in new tab)"
+               target="_blank"
+               rel="noopener noreferrer"><%= config.footer.text %></a>
+        </footer>
+    </div>
+
+    <!-- Load critical JS inline for better LCP -->
+    <script>
+        // Critical: Avatar preload and immediate rendering
+        const avatar = document.querySelector('.avatar');
+        if (avatar) {
+            avatar.style.opacity = '1'; // Force immediate render
+        }
+    </script>
+
+    <!-- Defer non-critical JavaScript -->
+    <script src="/js/script.js" defer></script>
+</body>
+</html>

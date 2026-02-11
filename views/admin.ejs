@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - <%= config.title %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0f1117;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .admin-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: #161922;
+            padding: 24px;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sidebar-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 32px;
+            color: #667eea;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 8px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(102, 126, 234, 0.15);
+            color: #667eea;
+        }
+
+        .nav-item i {
+            width: 20px;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-danger {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: rgba(244, 67, 54, 0.3);
+        }
+
+        .btn-success {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-success:hover {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 24px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            margin-bottom: 16px;
+        }
+
+        .stat-icon.blue { background: rgba(102, 126, 234, 0.2); color: #667eea; }
+        .stat-icon.green { background: rgba(76, 175, 80, 0.2); color: #4caf50; }
+        .stat-icon.orange { background: rgba(255, 152, 0, 0.2); color: #ff9800; }
+        .stat-icon.red { background: rgba(244, 67, 54, 0.2); color: #f44336; }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
+        }
+
+        /* Tables */
+        .table-container {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .table-search {
+            padding: 10px 16px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            color: #fff;
+            width: 250px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 16px 24px;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(255,255,255,0.03);
+            font-weight: 600;
+            color: rgba(255,255,255,0.6);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+
+        tr:hover td {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .ip-address {
+            font-family: monospace;
+            background: rgba(102, 126, 234, 0.15);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .badge.danger {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .badge.warning {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            margin-right: 8px;
+        }
+
+        .action-btn.ban {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .action-btn.ban:hover {
+            background: rgba(244, 67, 54, 0.3);
+        }
+
+        .action-btn.unban {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+        }
+
+        .action-btn.unban:hover {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .tab:hover, .tab.active {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 16px 24px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 12px;
+            color: #4caf50;
+            font-weight: 500;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.error {
+            background: rgba(244, 67, 54, 0.2);
+            border-color: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .admin-container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                padding: 16px;
+            }
+
+            .main-content {
+                padding: 16px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-title">
+                <i class="fas fa-shield-alt"></i> Admin Panel
+            </div>
+            <div class="nav-item active" onclick="showTab('dashboard')">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" onclick="showTab('visitors')">
+                <i class="fas fa-users"></i>
+                <span>Visitors</span>
+            </div>
+            <div class="nav-item" onclick="showTab('banned')">
+                <i class="fas fa-ban"></i>
+                <span>Banned IPs</span>
+            </div>
+            <div class="nav-item" onclick="showTab('settings')">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </div>
+            <div class="nav-item" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="header">
+                    <h1>Dashboard</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-danger" onclick="clearVisitors()">
+                            <i class="fas fa-trash"></i> Clear Data
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-value" id="totalVisitors">-</div>
+                        <div class="stat-label">Total Visitors</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        <div class="stat-value" id="todayVisitors">-</div>
+                        <div class="stat-label">Today Visitors</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-value" id="activeNow">-</div>
+                        <div class="stat-label">Active Now</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red">
+                            <i class="fas fa-ban"></i>
+                        </div>
+                        <div class="stat-value" id="bannedCount">-</div>
+                        <div class="stat-label">Banned IPs</div>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="margin-bottom: 24px;">
+                    <div class="stat-icon blue">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="stat-value" id="uptime">-</div>
+                    <div class="stat-label">Server Uptime</div>
+                </div>
+            </div>
+
+            <!-- Visitors Tab -->
+            <div id="visitors" class="tab-content">
+                <div class="header">
+                    <h1>Visitor Logs</h1>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="table-title">Recent Visitors</div>
+                        <input type="text" class="table-search" placeholder="Search IP..." id="visitorSearch" onkeyup="filterVisitors()">
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th>First Visit</th>
+                                <th>Last Visit</th>
+                                <th>Page Views</th>
+                                <th>User Agent</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="visitorTable">
+                            <tr>
+                                <td colspan="6" class="loading">
+                                    <i class="fas fa-spinner"></i><br>Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Banned Tab -->
+            <div id="banned" class="tab-content">
+                <div class="header">
+                    <h1>Banned IPs</h1>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <div class="table-title">Blocked IPs</div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bannedTable">
+                            <tr>
+                                <td colspan="3" class="loading">
+                                    <i class="fas fa-spinner"></i><br>Loading...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-content">
+                <div class="header">
+                    <h1>Settings</h1>
+                </div>
+
+                <div class="table-container" style="padding: 24px;">
+                    <h3 style="margin-bottom: 16px;">Rate Limiting Configuration</h3>
+                    <div style="display: grid; gap: 16px; max-width: 400px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7);">Max Requests per Second</label>
+                            <input type="number" class="table-search" style="width: 100%;" id="maxRequestsPerSecond" min="1" max="100">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7);">Block Duration (seconds)</label>
+                            <input type="number" class="table-search" style="width: 100%;" id="blockDuration" min="10" max="3600">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7);">Window Size (milliseconds)</label>
+                            <input type="number" class="table-search" style="width: 100%;" id="windowSize" min="500" max="10000">
+                        </div>
+                        <button class="btn btn-primary" onclick="updateSettings()">
+                            <i class="fas fa-save"></i> Save Settings
+                        </button>
+                        <div id="settingsStatus" style="margin-top: 12px; font-size: 0.9rem;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Tab switching
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            
+            document.getElementById(tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/admin/stats');
+                const data = await response.json();
+                
+                document.getElementById('totalVisitors').textContent = data.totalVisitors;
+                document.getElementById('todayVisitors').textContent = data.todayVisitors;
+                document.getElementById('activeNow').textContent = data.hourVisitors;
+                document.getElementById('bannedCount').textContent = data.bannedCount;
+                
+                // Format uptime
+                const uptime = Math.floor(data.uptime);
+                const hours = Math.floor(uptime / 3600);
+                const minutes = Math.floor((uptime % 3600) / 60);
+                document.getElementById('uptime').textContent = `${hours}h ${minutes}m`;
+            } catch (error) {
+                showToast('Failed to load stats', true);
+            }
+        }
+
+        // Load visitors
+        async function loadVisitors() {
+            try {
+                const [visitorsRes, bannedRes] = await Promise.all([
+                    fetch('/admin/visitors'),
+                    fetch('/admin/banned')
+                ]);
+                const visitors = await visitorsRes.json();
+                const banned = await bannedRes.json();
+                const bannedSet = new Set(banned);
+                
+                const tbody = document.getElementById('visitorTable');
+                if (visitors.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: rgba(255,255,255,0.5);">No visitors yet</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = visitors.map(v => {
+                    const isBanned = bannedSet.has(v.ip);
+                    return `
+                    <tr>
+                        <td><span class="ip-address">${v.ip}</span> ${isBanned ? '<span class="badge danger">BANNED</span>' : ''}</td>
+                        <td>${new Date(v.firstVisit).toLocaleString()}</td>
+                        <td>${new Date(v.lastVisit).toLocaleString()}</td>
+                        <td><span class="badge success">${v.pageViews}</span></td>
+                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${v.userAgent}</td>
+                        <td>
+                            ${isBanned 
+                                ? `<button class="action-btn unban" onclick="unbanIP('${v.ip}')"><i class="fas fa-check"></i> Unban</button>`
+                                : `<button class="action-btn ban" onclick="banIP('${v.ip}')"><i class="fas fa-ban"></i> Ban</button>`
+                            }
+                        </td>
+                    </tr>
+                `}).join('');
+            } catch (error) {
+                document.getElementById('visitorTable').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #f44336;">Failed to load visitors</td></tr>';
+            }
+        }
+
+        // Load banned
+        async function loadBanned() {
+            try {
+                const response = await fetch('/admin/banned');
+                const banned = await response.json();
+                
+                const tbody = document.getElementById('bannedTable');
+                if (banned.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: rgba(255,255,255,0.5);">No banned IPs</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = banned.map(ip => `
+                    <tr>
+                        <td><span class="ip-address">${ip}</span></td>
+                        <td><span class="badge danger">Blocked</span></td>
+                        <td>
+                            <button class="action-btn unban" onclick="unbanIP('${ip}')">
+                                <i class="fas fa-check"></i> Unban
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                document.getElementById('bannedTable').innerHTML = '<tr><td colspan="3" style="text-align: center; color: #f44336;">Failed to load banned IPs</td></tr>';
+            }
+        }
+
+        // Ban IP
+        async function banIP(ip) {
+            if (!confirm(`Ban IP ${ip}?`)) return;
+            
+            try {
+                const response = await fetch(`/admin/ban?ip=${encodeURIComponent(ip)}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message);
+                    loadVisitors();
+                    loadBanned();
+                    loadStats();
+                } else {
+                    showToast(data.error || 'Failed to ban IP', true);
+                }
+            } catch (error) {
+                showToast('Failed to ban IP', true);
+            }
+        }
+
+        // Unban IP
+        async function unbanIP(ip) {
+            if (!confirm(`Unban IP ${ip}?`)) return;
+            
+            try {
+                const response = await fetch(`/admin/unban?ip=${encodeURIComponent(ip)}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message);
+                    loadVisitors();
+                    loadBanned();
+                    loadStats();
+                } else {
+                    showToast(data.error || 'Failed to unban IP', true);
+                }
+            } catch (error) {
+                showToast('Failed to unban IP', true);
+            }
+        }
+
+        // Clear visitors
+        async function clearVisitors() {
+            if (!confirm('Clear all visitor data?')) return;
+            
+            try {
+                const response = await fetch('/admin/clear-visitors');
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast(data.message);
+                    loadVisitors();
+                    loadStats();
+                } else {
+                    showToast('Failed to clear visitors', true);
+                }
+            } catch (error) {
+                showToast('Failed to clear visitors', true);
+            }
+        }
+
+        // Filter visitors
+        function filterVisitors() {
+            const search = document.getElementById('visitorSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('#visitorTable tr');
+            
+            rows.forEach(row => {
+                const ip = row.querySelector('.ip-address')?.textContent.toLowerCase() || '';
+                row.style.display = ip.includes(search) ? '' : 'none';
+            });
+        }
+
+        // Toast notification
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast' + (isError ? ' error' : '');
+            toast.classList.add('show');
+            
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Logout
+        function logout() {
+            window.location.href = '/';
+        }
+
+        // Load settings
+        async function loadSettings() {
+            try {
+                const response = await fetch('/admin/settings');
+                const settings = await response.json();
+                
+                document.getElementById('maxRequestsPerSecond').value = settings.maxRequestsPerSecond;
+                document.getElementById('blockDuration').value = settings.blockDuration / 1000; // Convert to seconds
+                document.getElementById('windowSize').value = settings.windowSize;
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        }
+
+        // Update settings
+        async function updateSettings() {
+            const maxRequestsPerSecond = parseInt(document.getElementById('maxRequestsPerSecond').value);
+            const blockDuration = parseInt(document.getElementById('blockDuration').value) * 1000; // Convert to milliseconds
+            const windowSize = parseInt(document.getElementById('windowSize').value);
+            
+            const statusDiv = document.getElementById('settingsStatus');
+            
+            if (isNaN(maxRequestsPerSecond) || maxRequestsPerSecond < 1 || maxRequestsPerSecond > 100) {
+                statusDiv.textContent = 'Max requests must be between 1-100';
+                statusDiv.style.color = '#f44336';
+                return;
+            }
+            
+            if (isNaN(blockDuration) || blockDuration < 10000 || blockDuration > 3600000) {
+                statusDiv.textContent = 'Block duration must be between 10-3600 seconds';
+                statusDiv.style.color = '#f44336';
+                return;
+            }
+            
+            if (isNaN(windowSize) || windowSize < 500 || windowSize > 10000) {
+                statusDiv.textContent = 'Window size must be between 500-10000 milliseconds';
+                statusDiv.style.color = '#f44336';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/admin/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        maxRequestsPerSecond,
+                        blockDuration,
+                        windowSize
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    statusDiv.textContent = 'Settings updated successfully!';
+                    statusDiv.style.color = '#4caf50';
+                    showToast('Rate limiting settings updated');
+                } else {
+                    statusDiv.textContent = 'Failed to update settings';
+                    statusDiv.style.color = '#f44336';
+                }
+            } catch (error) {
+                statusDiv.textContent = 'Error updating settings';
+                statusDiv.style.color = '#f44336';
+                showToast('Failed to update settings', true);
+            }
+        }
+
+        // Auto refresh every 30 seconds
+        setInterval(() => {
+            loadStats();
+        }, 30000);
+
+        // Initial load
+        loadStats();
+        loadVisitors();
+        loadBanned();
+        loadSettings();
+    </script>
+</body>
+</html>

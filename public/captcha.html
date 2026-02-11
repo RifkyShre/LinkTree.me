@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slider Captcha</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .captcha-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .captcha-title {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .captcha-instruction {
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1rem;
+        }
+
+        .slider-track {
+            width: 320px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 30px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 16px;
+        }
+
+        .target-zone {
+            position: absolute;
+            top: 6px;
+            width: 60px;
+            height: 48px;
+            background: rgba(76, 175, 80, 0.5);
+            border: 3px solid #4caf50;
+            border-radius: 12px;
+            z-index: 1;
+        }
+
+        .target-zone::before {
+            content: '✔';
+            color: #4caf50;
+            font-size: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .target-zone.highlight {
+            background: rgba(76, 175, 80, 0.7);
+            border-color: #66ff66;
+        }
+
+        .ball {
+            position: absolute;
+            top: 6px;
+            left: 4px;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            cursor: grab;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+            z-index: 10;
+        }
+
+        .ball:active {
+            cursor: grabbing;
+        }
+
+        .ball.success {
+            background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+        }
+
+        .status-message {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status-message.success {
+            display: block;
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 1px solid rgba(76, 175, 80, 0.5);
+        }
+
+        .status-message.error {
+            display: block;
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.5);
+        }
+
+        .reset-btn {
+            display: block;
+            margin: 20px auto 0;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .reset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        @media (max-width: 400px) {
+            .slider-track {
+                width: 280px;
+            }
+            
+            .captcha-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="captcha-container">
+        <h2 class="captcha-title">Slider Puzzle Captcha</h2>
+        <p class="captcha-instruction">Geser bola ke dalam kotak hijau!</p>
+        
+        <div class="slider-track" id="sliderTrack">
+            <div class="target-zone" id="targetZone"></div>
+            <div class="ball" id="ball"></div>
+        </div>
+        
+        <div class="status-message" id="statusMessage"></div>
+        <button class="reset-btn" id="resetBtn">Reset Captcha</button>
+    </div>
+
+    <script>
+        class SliderCaptcha {
+            constructor() {
+                this.track = document.getElementById('sliderTrack');
+                this.ball = document.getElementById('ball');
+                this.targetZone = document.getElementById('targetZone');
+                this.statusMessage = document.getElementById('statusMessage');
+                this.resetBtn = document.getElementById('resetBtn');
+                
+                this.trackWidth = this.track.offsetWidth;
+                this.ballSize = 50;
+                this.targetWidth = 80;
+                
+                this.isDragging = false;
+                this.startX = 0;
+                this.ballX = 5;
+                this.targetX = 0;
+                this.isSolved = false;
+                
+                // Bot protection - only count FAILED attempts
+                this.failedAttempts = 0;
+                this.lastFailedTime = 0;
+                this.minSolveTime = 800; // Minimum 0.8 detik
+                this.startTime = 0;
+                this.maxFailedPerMinute = 10;
+                this.blockedUntil = 0;
+                
+                this.init();
+            }
+            
+            init() {
+                this.randomizeTarget();
+                this.bindEvents();
+                this.resetBtn.addEventListener('click', () => this.reset());
+                
+                // Check if already verified (remember for 24 hours)
+                const verifiedTime = localStorage.getItem('captchaVerifiedTime');
+                const now = Date.now();
+                const isVerified = localStorage.getItem('captchaVerified') === 'true';
+                const isRecent = verifiedTime && (now - parseInt(verifiedTime)) < (24 * 60 * 60 * 1000);
+                
+                if (isVerified && isRecent) {
+                    this.hide();
+                } else {
+                    // Check if blocked
+                    if (now < this.blockedUntil) {
+                        this.showBlockedMessage();
+                    }
+                }
+            }
+            
+            showBlockedMessage() {
+                const remaining = Math.ceil((this.blockedUntil - Date.now()) / 1000);
+                this.statusMessage.textContent = `Terlalu banyak percobaan! Tunggu ${remaining} detik.`;
+                this.statusMessage.className = 'status-message error';
+                this.ball.style.pointerEvents = 'none';
+            }
+            
+            randomizeTarget() {
+                var maxPos = this.trackWidth - this.targetWidth - 10;
+                var minDistance = 120; // Increased minimum distance from ball
+                this.targetX = Math.floor(Math.random() * maxPos) + 10;
+                
+                // Ensure target is far enough from ball starting position (ball starts at 4px)
+                while (Math.abs(this.targetX - 4) < minDistance) {
+                    this.targetX = Math.floor(Math.random() * maxPos) + 10;
+                }
+                
+                this.targetZone.style.left = this.targetX + 'px';
+                this.targetZone.style.display = 'block';
+            }
+            
+            bindEvents() {
+                this.ball.addEventListener('mousedown', (e) => this.startDrag(e));
+                this.ball.addEventListener('touchstart', (e) => this.startDrag(e), { passive: false });
+                
+                document.addEventListener('mousemove', (e) => this.drag(e));
+                document.addEventListener('touchmove', (e) => this.drag(e), { passive: false });
+                
+                document.addEventListener('mouseup', () => this.endDrag());
+                document.addEventListener('touchend', () => this.endDrag());
+            }
+            
+            startDrag(e) {
+                if (this.isSolved) return;
+                if (Date.now() < this.blockedUntil) return;
+                
+                e.preventDefault();
+                e.stopPropagation();
+                this.isDragging = true;
+                this.startX = e.clientX || e.touches[0].clientX;
+                this.ballStartX = this.ballX;
+                this.ball.style.transition = 'none';
+                
+                // Record start time for bot detection
+                if (this.startTime === 0) {
+                    this.startTime = Date.now();
+                }
+            }
+            
+            drag(e) {
+                if (!this.isDragging || this.isSolved) return;
+                if (Date.now() < this.blockedUntil) return;
+                
+                e.preventDefault();
+                e.stopPropagation();
+                const clientX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+                const deltaX = clientX - this.startX;
+                let newX = this.ballStartX + deltaX;
+                
+                const maxX = this.trackWidth - this.ballSize - 5;
+                newX = Math.max(5, Math.min(maxX, newX));
+                
+                this.ballX = newX;
+                this.ball.style.left = `${newX}px`;
+                
+                this.checkOverlap();
+            }
+            
+            endDrag() {
+                if (!this.isDragging) return;
+                this.isDragging = false;
+                
+                // Bot detection: Check solve time
+                const solveTime = Date.now() - this.startTime;
+                this.startTime = 0;
+                
+                if (this.checkSuccess()) {
+                    this.success();
+                } else {
+                    // Only count FAILED attempts
+                    const now = Date.now();
+                    if (now - this.lastFailedTime < 1000) {
+                        this.failedAttempts++;
+                    } else {
+                        this.failedAttempts = 1;
+                    }
+                    this.lastFailedTime = now;
+                    
+                    // Block if too many FAILED attempts AND too fast
+                    if (this.failedAttempts > this.maxFailedPerMinute && solveTime < this.minSolveTime) {
+                        this.blockedUntil = now + 30000; // Block for 30 seconds
+                        this.showBlockedMessage();
+                        return;
+                    }
+                    
+                    this.ball.style.transition = 'left 0.3s ease';
+                    this.ballX = 5;
+                    this.ball.style.left = '5px';
+                    this.targetZone.classList.remove('highlight');
+                }
+            }
+            
+            checkOverlap() {
+                const ballCenter = this.ballX + this.ballSize / 2;
+                const targetStart = this.targetX;
+                const targetEnd = this.targetX + this.targetWidth;
+                
+                if (ballCenter >= targetStart && ballCenter <= targetEnd) {
+                    this.targetZone.classList.add('highlight');
+                } else {
+                    this.targetZone.classList.remove('highlight');
+                }
+            }
+            
+            checkSuccess() {
+                const ballCenter = this.ballX + this.ballSize / 2;
+                const targetStart = this.targetX + 5;
+                const targetEnd = this.targetX + this.targetWidth - 5;
+                
+                return ballCenter >= targetStart && ballCenter <= targetEnd;
+            }
+            
+            reset() {
+                this.isSolved = false;
+                this.ballX = 5;
+                this.ball.style.left = '5px';
+                this.ball.classList.remove('success');
+                this.ball.style.transition = 'left 0.3s ease';
+                this.targetZone.classList.remove('highlight');
+                this.statusMessage.className = 'status-message';
+                this.statusMessage.textContent = '';
+                this.randomizeTarget();
+                
+                // Reset bot detection
+                this.ball.style.pointerEvents = 'auto';
+            }
+            
+            success() {
+                this.isSolved = true;
+                this.ball.classList.add('success');
+                this.ball.style.left = `${this.targetX + (this.targetWidth - this.ballSize) / 2}px`;
+                
+                this.statusMessage.textContent = '✓ Captcha Berhasil!';
+                this.statusMessage.className = 'status-message success';
+                
+                // Remember user for 24 hours
+                localStorage.setItem('captchaVerified', 'true');
+                localStorage.setItem('captchaVerifiedTime', Date.now().toString());
+                
+                setTimeout(() => {
+                    this.reset();
+                }, 2000);
+            }
+            
+            hide() {
+                this.track.parentElement.style.display = 'none';
+            }
+        }
+        
+        const captcha = new SliderCaptcha();
+    </script>
+</body>
+</html>
