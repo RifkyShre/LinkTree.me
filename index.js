@@ -205,75 +205,6 @@ app.get('/', rateLimiter, (req, res) => {
 });
 
 // Admin API routes
-app.get('/admin/stats', adminAuth, (req, res) => {
-    const now = Date.now();
-    const oneDayAgo = now - (24 * 60 * 60 * 1000);
-    const oneHourAgo = now - (60 * 60 * 1000);
-    
-    let totalVisitors = 0;
-    let todayVisitors = 0;
-    let hourVisitors = 0;
-    
-    for (const [ip, data] of visitors.entries()) {
-        totalVisitors++;
-        if (data.lastVisit > oneDayAgo) {
-            todayVisitors++;
-        }
-        if (data.lastVisit > oneHourAgo) {
-            hourVisitors++;
-        }
-    }
-    
-    res.json({
-        totalVisitors,
-        todayVisitors,
-        hourVisitors,
-        bannedCount: bannedIPs.size,
-        activeConnections: hourVisitors,
-        uptime: process.uptime(),
-        rateLimitConfig: rateLimitConfig
-    });
-});
-
-app.get('/admin/settings', adminAuth, (req, res) => {
-    res.json(rateLimitConfig);
-});
-
-app.post('/admin/settings', adminAuth, express.json(), (req, res) => {
-    const { blockDuration, maxRequestsPerSecond, windowSize } = req.body;
-    
-    if (typeof blockDuration === 'number' && blockDuration > 0) {
-        rateLimitConfig.blockDuration = blockDuration;
-    }
-    if (typeof maxRequestsPerSecond === 'number' && maxRequestsPerSecond > 0) {
-        rateLimitConfig.maxRequestsPerSecond = maxRequestsPerSecond;
-    }
-    if (typeof windowSize === 'number' && windowSize > 0) {
-        rateLimitConfig.windowSize = windowSize;
-    }
-    
-    res.json({ success: true, message: 'Settings updated successfully', config: rateLimitConfig });
-});
-
-app.get('/admin/visitors', adminAuth, (req, res) => {
-    const visitorList = [];
-    for (const [ip, data] of visitors.entries()) {
-        visitorList.push({
-            ip,
-            firstVisit: new Date(data.firstVisit).toISOString(),
-            lastVisit: new Date(data.lastVisit).toISOString(),
-            pageViews: data.pageViews,
-            userAgent: data.userAgent.substring(0, 100),
-            currentPage: data.path
-        });
-    }
-    
-    // Sort by last visit descending
-    visitorList.sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
-    
-    res.json(visitorList);
-});
-
 app.get('/admin/banned', adminAuth, (req, res) => {
     const bannedList = Array.from(bannedIPs);
     res.json(bannedList);
@@ -301,9 +232,46 @@ app.post('/admin/unban', adminAuthBypassBan, (req, res) => {
     }
 });
 
-app.get('/admin/clear-visitors', adminAuth, (req, res) => {
-    visitors.clear();
-    res.json({ success: true, message: 'Visitor data cleared' });
+// Social media management
+app.get('/admin/social-media', adminAuthBypassBan, (req, res) => {
+    res.json(config.socialMedia || []);
+});
+
+app.post('/admin/social-media', adminAuthBypassBan, express.json(), (req, res) => {
+    try {
+        config.socialMedia = req.body;
+        // Save to file (in a real app, you'd use a database)
+        const fs = require('fs');
+        const configPath = './config.js';
+        const configContent = `module.exports = ${JSON.stringify(config, null, 4)};`;
+        fs.writeFileSync(configPath, configContent);
+        
+        res.json({ success: true, message: 'Social media updated successfully' });
+    } catch (error) {
+        console.error('Error updating social media:', error);
+        res.status(500).json({ error: 'Failed to update social media' });
+    }
+});
+
+// Link sections management
+app.get('/admin/link-sections', adminAuthBypassBan, (req, res) => {
+    res.json(config.linkSections || []);
+});
+
+app.post('/admin/link-sections', adminAuthBypassBan, express.json(), (req, res) => {
+    try {
+        config.linkSections = req.body;
+        // Save to file (in a real app, you'd use a database)
+        const fs = require('fs');
+        const configPath = './config.js';
+        const configContent = `module.exports = ${JSON.stringify(config, null, 4)};`;
+        fs.writeFileSync(configPath, configContent);
+        
+        res.json({ success: true, message: 'Link sections updated successfully' });
+    } catch (error) {
+        console.error('Error updating link sections:', error);
+        res.status(500).json({ error: 'Failed to update link sections' });
+    }
 });
 
 // Admin panel page - bypasses banned IP check for admin access

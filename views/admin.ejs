@@ -27,7 +27,6 @@
             min-height: 100vh;
         }
 
-        /* Sidebar */
         .sidebar {
             width: 260px;
             background: #161922;
@@ -390,21 +389,17 @@
             <div class="sidebar-title">
                 <i class="fas fa-shield-alt"></i> Admin Panel
             </div>
-            <div class="nav-item active" onclick="showTab('dashboard')">
-                <i class="fas fa-chart-line"></i>
-                <span>Dashboard</span>
-            </div>
-            <div class="nav-item" onclick="showTab('visitors')">
-                <i class="fas fa-users"></i>
-                <span>Visitors</span>
-            </div>
-            <div class="nav-item" onclick="showTab('banned')">
+            <div class="nav-item active" onclick="showTab('banned')">
                 <i class="fas fa-ban"></i>
                 <span>Banned IPs</span>
             </div>
-            <div class="nav-item" onclick="showTab('settings')">
-                <i class="fas fa-cog"></i>
-                <span>Settings</span>
+            <div class="nav-item" onclick="showTab('social')">
+                <i class="fas fa-share-alt"></i>
+                <span>Social Media</span>
+            </div>
+            <div class="nav-item" onclick="showTab('links')">
+                <i class="fas fa-link"></i>
+                <span>Link Sections</span>
             </div>
             <div class="nav-item" onclick="logout()">
                 <i class="fas fa-sign-out-alt"></i>
@@ -414,92 +409,8 @@
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Dashboard Tab -->
-            <div id="dashboard" class="tab-content active">
-                <div class="header">
-                    <h1>Dashboard</h1>
-                    <div class="header-actions">
-                        <button class="btn btn-danger" onclick="clearVisitors()">
-                            <i class="fas fa-trash"></i> Clear Data
-                        </button>
-                    </div>
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon blue">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="stat-value" id="totalVisitors">-</div>
-                        <div class="stat-label">Total Visitors</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon green">
-                            <i class="fas fa-calendar-day"></i>
-                        </div>
-                        <div class="stat-value" id="todayVisitors">-</div>
-                        <div class="stat-label">Today Visitors</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon orange">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="stat-value" id="activeNow">-</div>
-                        <div class="stat-label">Active Now</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon red">
-                            <i class="fas fa-ban"></i>
-                        </div>
-                        <div class="stat-value" id="bannedCount">-</div>
-                        <div class="stat-label">Banned IPs</div>
-                    </div>
-                </div>
-
-                <div class="stat-card" style="margin-bottom: 24px;">
-                    <div class="stat-icon blue">
-                        <i class="fas fa-server"></i>
-                    </div>
-                    <div class="stat-value" id="uptime">-</div>
-                    <div class="stat-label">Server Uptime</div>
-                </div>
-            </div>
-
-            <!-- Visitors Tab -->
-            <div id="visitors" class="tab-content">
-                <div class="header">
-                    <h1>Visitor Logs</h1>
-                </div>
-
-                <div class="table-container">
-                    <div class="table-header">
-                        <div class="table-title">Recent Visitors</div>
-                        <input type="text" class="table-search" placeholder="Search IP..." id="visitorSearch" onkeyup="filterVisitors()">
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>IP Address</th>
-                                <th>First Visit</th>
-                                <th>Last Visit</th>
-                                <th>Page Views</th>
-                                <th>User Agent</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="visitorTable">
-                            <tr>
-                                <td colspan="6" class="loading">
-                                    <i class="fas fa-spinner"></i><br>Loading...
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Banned Tab -->
-            <div id="banned" class="tab-content">
+            <!-- Banned IPs Tab -->
+            <div id="banned" class="tab-content active">
                 <div class="header">
                     <h1>Banned IPs</h1>
                 </div>
@@ -507,6 +418,10 @@
                 <div class="table-container">
                     <div class="table-header">
                         <div class="table-title">Blocked IPs</div>
+                        <input type="text" class="table-search" placeholder="Ban IP..." id="banInput" onkeypress="handleBanKeypress(event)">
+                        <button class="btn btn-danger" onclick="banCustomIP()" style="margin-left: 8px;">
+                            <i class="fas fa-plus"></i> Ban IP
+                        </button>
                     </div>
                     <table>
                         <thead>
@@ -527,31 +442,42 @@
                 </div>
             </div>
 
-            <!-- Settings Tab -->
-            <div id="settings" class="tab-content">
+            <!-- Social Media Tab -->
+            <div id="social" class="tab-content">
                 <div class="header">
-                    <h1>Settings</h1>
+                    <h1>Social Media Links</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="saveSocialMedia()">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-container" style="padding: 24px;">
-                    <h3 style="margin-bottom: 16px;">Rate Limiting Configuration</h3>
-                    <div style="display: grid; gap: 16px; max-width: 400px;">
-                        <div>
-                            <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7);">Max Requests per Second</label>
-                            <input type="number" class="table-search" style="width: 100%;" id="maxRequestsPerSecond" min="1" max="100">
+                    <div id="socialMediaContainer">
+                        <div class="loading">
+                            <i class="fas fa-spinner"></i><br>Loading social media...
                         </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7);">Block Duration (seconds)</label>
-                            <input type="number" class="table-search" style="width: 100%;" id="blockDuration" min="10" max="3600">
-                        </div>
-                        <div>
-                            <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7);">Window Size (milliseconds)</label>
-                            <input type="number" class="table-search" style="width: 100%;" id="windowSize" min="500" max="10000">
-                        </div>
-                        <button class="btn btn-primary" onclick="updateSettings()">
-                            <i class="fas fa-save"></i> Save Settings
+                    </div>
+                </div>
+            </div>
+
+            <!-- Link Sections Tab -->
+            <div id="links" class="tab-content">
+                <div class="header">
+                    <h1>Link Sections</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" onclick="saveLinkSections()">
+                            <i class="fas fa-save"></i> Save Changes
                         </button>
-                        <div id="settingsStatus" style="margin-top: 12px; font-size: 0.9rem;"></div>
+                    </div>
+                </div>
+
+                <div class="table-container" style="padding: 24px;">
+                    <div id="linkSectionsContainer">
+                        <div class="loading">
+                            <i class="fas fa-spinner"></i><br>Loading link sections...
+                        </div>
                     </div>
                 </div>
             </div>
@@ -571,67 +497,7 @@
             event.currentTarget.classList.add('active');
         }
 
-        // Load stats
-        async function loadStats() {
-            try {
-                const response = await fetch('/admin/stats');
-                const data = await response.json();
-                
-                document.getElementById('totalVisitors').textContent = data.totalVisitors;
-                document.getElementById('todayVisitors').textContent = data.todayVisitors;
-                document.getElementById('activeNow').textContent = data.hourVisitors;
-                document.getElementById('bannedCount').textContent = data.bannedCount;
-                
-                // Format uptime
-                const uptime = Math.floor(data.uptime);
-                const hours = Math.floor(uptime / 3600);
-                const minutes = Math.floor((uptime % 3600) / 60);
-                document.getElementById('uptime').textContent = `${hours}h ${minutes}m`;
-            } catch (error) {
-                showToast('Failed to load stats', true);
-            }
-        }
-
-        // Load visitors
-        async function loadVisitors() {
-            try {
-                const [visitorsRes, bannedRes] = await Promise.all([
-                    fetch('/admin/visitors'),
-                    fetch('/admin/banned')
-                ]);
-                const visitors = await visitorsRes.json();
-                const banned = await bannedRes.json();
-                const bannedSet = new Set(banned);
-                
-                const tbody = document.getElementById('visitorTable');
-                if (visitors.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: rgba(255,255,255,0.5);">No visitors yet</td></tr>';
-                    return;
-                }
-                
-                tbody.innerHTML = visitors.map(v => {
-                    const isBanned = bannedSet.has(v.ip);
-                    return `
-                    <tr>
-                        <td><span class="ip-address">${v.ip}</span> ${isBanned ? '<span class="badge danger">BANNED</span>' : ''}</td>
-                        <td>${new Date(v.firstVisit).toLocaleString()}</td>
-                        <td>${new Date(v.lastVisit).toLocaleString()}</td>
-                        <td><span class="badge success">${v.pageViews}</span></td>
-                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${v.userAgent}</td>
-                        <td>
-                            ${isBanned 
-                                ? `<button class="action-btn unban" onclick="unbanIP('${v.ip}')"><i class="fas fa-check"></i> Unban</button>`
-                                : `<button class="action-btn ban" onclick="banIP('${v.ip}')"><i class="fas fa-ban"></i> Ban</button>`
-                            }
-                        </td>
-                    </tr>
-                `}).join('');
-            } catch (error) {
-                document.getElementById('visitorTable').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #f44336;">Failed to load visitors</td></tr>';
-            }
-        }
-
-        // Load banned
+        // Load banned IPs
         async function loadBanned() {
             try {
                 const response = await fetch('/admin/banned');
@@ -659,8 +525,14 @@
             }
         }
 
-        // Ban IP
-        async function banIP(ip) {
+        // Ban custom IP
+        async function banCustomIP() {
+            const ip = document.getElementById('banInput').value.trim();
+            if (!ip) {
+                showToast('Please enter an IP address', true);
+                return;
+            }
+            
             if (!confirm(`Ban IP ${ip}?`)) return;
             
             try {
@@ -671,14 +543,20 @@
                 
                 if (data.success) {
                     showToast(data.message);
-                    loadVisitors();
+                    document.getElementById('banInput').value = '';
                     loadBanned();
-                    loadStats();
                 } else {
                     showToast(data.error || 'Failed to ban IP', true);
                 }
             } catch (error) {
                 showToast('Failed to ban IP', true);
+            }
+        }
+
+        // Handle enter key for ban input
+        function handleBanKeypress(event) {
+            if (event.key === 'Enter') {
+                banCustomIP();
             }
         }
 
@@ -694,9 +572,7 @@
                 
                 if (data.success) {
                     showToast(data.message);
-                    loadVisitors();
                     loadBanned();
-                    loadStats();
                 } else {
                     showToast(data.error || 'Failed to unban IP', true);
                 }
@@ -705,35 +581,355 @@
             }
         }
 
-        // Clear visitors
-        async function clearVisitors() {
-            if (!confirm('Clear all visitor data?')) return;
-            
+        // Load social media
+        async function loadSocialMedia() {
             try {
-                const response = await fetch('/admin/clear-visitors');
-                const data = await response.json();
+                const response = await fetch('/admin/social-media');
+                const socialMedia = await response.json();
                 
-                if (data.success) {
-                    showToast(data.message);
-                    loadVisitors();
-                    loadStats();
-                } else {
-                    showToast('Failed to clear visitors', true);
-                }
+                const container = document.getElementById('socialMediaContainer');
+                container.innerHTML = socialMedia.map((item, index) => `
+                    <div class="social-item" style="margin-bottom: 24px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 12px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 16px; align-items: end;">
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">Name</label>
+                                <input type="text" class="table-search" style="width: 100%;" value="${item.name}" data-field="name" data-index="${index}">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">Icon</label>
+                                <input type="text" class="table-search" style="width: 100%;" value="${item.icon}" data-field="icon" data-index="${index}">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">URL</label>
+                                <input type="text" class="table-search" style="width: 100%;" value="${item.url}" data-field="url" data-index="${index}">
+                            </div>
+                            <button class="btn btn-danger" onclick="removeSocialItem(${index})" style="padding: 10px 16px;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div style="margin-top: 16px;">
+                            <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">Color</label>
+                            <input type="text" class="table-search" style="width: 200px;" value="${item.color}" data-field="color" data-index="${index}">
+                        </div>
+                    </div>
+                `).join('') + `
+                    <button class="btn btn-success" onclick="addSocialItem()" style="width: 100%; margin-top: 16px;">
+                        <i class="fas fa-plus"></i> Add Social Media Link
+                    </button>
+                `;
             } catch (error) {
-                showToast('Failed to clear visitors', true);
+                document.getElementById('socialMediaContainer').innerHTML = '<div style="text-align: center; color: #f44336;">Failed to load social media</div>';
             }
         }
 
-        // Filter visitors
-        function filterVisitors() {
-            const search = document.getElementById('visitorSearch').value.toLowerCase();
-            const rows = document.querySelectorAll('#visitorTable tr');
-            
-            rows.forEach(row => {
-                const ip = row.querySelector('.ip-address')?.textContent.toLowerCase() || '';
-                row.style.display = ip.includes(search) ? '' : 'none';
+        // Save social media
+        async function saveSocialMedia() {
+            const items = [];
+            document.querySelectorAll('#socialMediaContainer .social-item').forEach((item, index) => {
+                const inputs = item.querySelectorAll('input');
+                items.push({
+                    name: inputs[0].value,
+                    icon: inputs[1].value,
+                    url: inputs[2].value,
+                    color: inputs[3].value
+                });
             });
+            
+            try {
+                const response = await fetch('/admin/social-media', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(items)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('Social media updated successfully');
+                } else {
+                    showToast('Failed to update social media', true);
+                }
+            } catch (error) {
+                showToast('Failed to update social media', true);
+            }
+        }
+
+        // Add social item
+        function addSocialItem() {
+            const container = document.getElementById('socialMediaContainer');
+            const newItem = document.createElement('div');
+            newItem.className = 'social-item';
+            newItem.style.cssText = 'margin-bottom: 24px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 12px;';
+            newItem.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 16px; align-items: end;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">Name</label>
+                        <input type="text" class="table-search" style="width: 100%;" value="" data-field="name">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">Icon</label>
+                        <input type="text" class="table-search" style="width: 100%;" value="" data-field="icon">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">URL</label>
+                        <input type="text" class="table-search" style="width: 100%;" value="" data-field="url">
+                    </div>
+                    <button class="btn btn-danger" onclick="removeSocialItem(this.parentElement.parentElement)" style="padding: 10px 16px;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div style="margin-top: 16px;">
+                    <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">Color</label>
+                    <input type="text" class="table-search" style="width: 200px;" value="#667eea" data-field="color">
+                </div>
+            `;
+            
+            // Insert before the "Add" button
+            const addButton = container.querySelector('.btn-success');
+            container.insertBefore(newItem, addButton);
+        }
+
+        // Remove social item
+        function removeSocialItem(indexOrElement) {
+            if (typeof indexOrElement === 'number') {
+                // Remove by index
+                const items = document.querySelectorAll('#socialMediaContainer .social-item');
+                if (items[indexOrElement]) {
+                    items[indexOrElement].remove();
+                }
+            } else {
+                // Remove by element
+                indexOrElement.remove();
+            }
+        }
+
+        // Load link sections
+        async function loadLinkSections() {
+            try {
+                const response = await fetch('/admin/link-sections');
+                const linkSections = await response.json();
+                
+                const container = document.getElementById('linkSectionsContainer');
+                container.innerHTML = linkSections.map((section, sectionIndex) => `
+                    <div class="section-item" style="margin-bottom: 32px; padding: 24px; background: rgba(255,255,255,0.05); border-radius: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1;">
+                                <div>
+                                    <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">Section Title</label>
+                                    <input type="text" class="table-search" style="width: 100%;" value="${section.title}" data-field="title" data-section="${sectionIndex}">
+                                </div>
+                                <div></div>
+                            </div>
+                            <button class="btn btn-danger" onclick="removeSection(${sectionIndex})" style="margin-left: 16px;">
+                                <i class="fas fa-trash"></i> Remove Section
+                            </button>
+                        </div>
+                        
+                        <div class="links-container">
+                            ${section.links.map((link, linkIndex) => `
+                                <div class="link-item" style="margin-bottom: 16px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px;">
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end; margin-bottom: 12px;">
+                                        <div>
+                                            <label style="display: block; margin-bottom: 4px; color: rgba(255,255,255,0.6); font-size: 0.8rem;">Title</label>
+                                            <input type="text" class="table-search" style="width: 100%;" value="${link.title}" data-field="title" data-section="${sectionIndex}" data-link="${linkIndex}">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; margin-bottom: 4px; color: rgba(255,255,255,0.6); font-size: 0.8rem;">Subtitle</label>
+                                            <input type="text" class="table-search" style="width: 100%;" value="${link.subtitle}" data-field="subtitle" data-section="${sectionIndex}" data-link="${linkIndex}">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; margin-bottom: 4px; color: rgba(255,255,255,0.6); font-size: 0.8rem;">URL</label>
+                                            <input type="text" class="table-search" style="width: 100%;" value="${link.url}" data-field="url" data-section="${sectionIndex}" data-link="${linkIndex}">
+                                        </div>
+                                        <button class="btn btn-danger" onclick="removeLink(${sectionIndex}, ${linkIndex})" style="padding: 8px 12px;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end;">
+                                        <div>
+                                            <label style="display: block; margin-bottom: 4px; color: rgba(255,255,255,0.6); font-size: 0.8rem;">Icon</label>
+                                            <input type="text" class="table-search" style="width: 100%;" value="${link.icon}" data-field="icon" data-section="${sectionIndex}" data-link="${linkIndex}">
+                                        </div>
+                                        <div>
+                                            <label style="display: block; margin-bottom: 4px; color: rgba(255,255,255,0.6); font-size: 0.8rem;">Color</label>
+                                            <input type="text" class="table-search" style="width: 100%;" value="${link.color}" data-field="color" data-section="${sectionIndex}" data-link="${linkIndex}">
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                            
+                            <button class="btn btn-success" onclick="addLink(${sectionIndex})" style="width: 100%; margin-top: 12px;">
+                                <i class="fas fa-plus"></i> Add Link
+                            </button>
+                        </div>
+                    </div>
+                `).join('') + `
+                    <button class="btn btn-primary" onclick="addSection()" style="width: 100%; margin-top: 24px;">
+                        <i class="fas fa-plus"></i> Add Section
+                    </button>
+                `;
+            } catch (error) {
+                document.getElementById('linkSectionsContainer').innerHTML = '<div style="text-align: center; color: #f44336;">Failed to load link sections</div>';
+            }
+        }
+
+        // Save link sections
+        async function saveLinkSections() {
+            const sections = [];
+            document.querySelectorAll('#linkSectionsContainer .section-item').forEach((sectionEl, sectionIndex) => {
+                const titleInput = sectionEl.querySelector('input[data-field="title"]');
+                const links = [];
+                
+                sectionEl.querySelectorAll('.link-item').forEach((linkEl, linkIndex) => {
+                    const inputs = linkEl.querySelectorAll('input');
+                    links.push({
+                        title: inputs[0].value,
+                        subtitle: inputs[1].value,
+                        url: inputs[2].value,
+                        icon: inputs[3].value,
+                        color: inputs[4].value
+                    });
+                });
+                
+                sections.push({
+                    title: titleInput.value,
+                    links: links
+                });
+            });
+            
+            try {
+                const response = await fetch('/admin/link-sections', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(sections)
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showToast('Link sections updated successfully');
+                } else {
+                    showToast('Failed to update link sections', true);
+                }
+            } catch (error) {
+                showToast('Failed to update link sections', true);
+            }
+        }
+
+        // Add section
+        function addSection() {
+            const container = document.getElementById('linkSectionsContainer');
+            const newSection = document.createElement('div');
+            newSection.className = 'section-item';
+            newSection.style.cssText = 'margin-bottom: 32px; padding: 24px; background: rgba(255,255,255,0.05); border-radius: 12px;';
+            newSection.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; color: rgba(255,255,255,0.7); font-size: 0.9rem;">Section Title</label>
+                            <input type="text" class="table-search" style="width: 100%;" value="New Section" data-field="title">
+                        </div>
+                        <div></div>
+                    </div>
+                    <button class="btn btn-danger" onclick="removeSection(this.parentElement.parentElement)" style="margin-left: 16px;">
+                        <i class="fas fa-trash"></i> Remove Section
+                    </button>
+                </div>
+                
+                <div class="links-container">
+                    <button class="btn btn-success" onclick="addLink(this.parentElement)" style="width: 100%; margin-top: 12px;">
+                        <i class="fas fa-plus"></i> Add Link
+                    </button>
+                </div>
+            `;
+            
+            // Insert before the "Add Section" button
+            const addButton = container.querySelector('.btn-primary');
+            container.insertBefore(newSection, addButton);
+        }
+
+        // Remove section
+        function removeSection(indexOrElement) {
+            if (typeof indexOrElement === 'number') {
+                const sections = document.querySelectorAll('#linkSectionsContainer .section-item');
+                if (sections[indexOrElement]) {
+                    sections[indexOrElement].remove();
+                }
+            } else {
+                indexOrElement.remove();
+            }
+        }
+
+        // Add link
+        function addLink(sectionIndexOrElement) {
+            if (typeof sectionIndexOrElement === 'number') {
+                // Add to specific section by index
+                const sections = document.querySelectorAll('#linkSectionsContainer .section-item');
+                if (sections[sectionIndexOrElement]) {
+                    const linksContainer = sections[sectionIndexOrElement].querySelector('.links-container');
+                    const addButton = linksContainer.querySelector('.btn-success');
+                    const newLink = createLinkElement();
+                    linksContainer.insertBefore(newLink, addButton);
+                }
+            } else {
+                // Add to section element
+                const linksContainer = sectionIndexOrElement;
+                const addButton = linksContainer.querySelector('.btn-success');
+                const newLink = createLinkElement();
+                linksContainer.insertBefore(newLink, addButton);
+            }
+        }
+
+        // Create link element
+        function createLinkElement() {
+            const linkEl = document.createElement('div');
+            linkEl.className = 'link-item';
+            linkEl.style.cssText = 'margin-bottom: 16px; padding: 16px; background: rgba(255,255,255,0.03); border-radius: 8px;';
+            linkEl.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end; margin-bottom: 12px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; color: rgba(255,255,255,0.6); font-size: 0.8rem;">Title</label>
+                        <input type="text" class="table-search" style="width: 100%;" value="" data-field="title">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; color: rgba(255,255,255,0.6); font-size: 0.8rem;">Subtitle</label>
+                        <input type="text" class="table-search" style="width: 100%;" value="" data-field="subtitle">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; color: rgba(255,255,255,0.6); font-size: 0.8rem;">URL</label>
+                        <input type="text" class="table-search" style="width: 100%;" value="" data-field="url">
+                    </div>
+                    <button class="btn btn-danger" onclick="removeLink(this.parentElement.parentElement)" style="padding: 8px 12px;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: end;">
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; color: rgba(255,255,255,0.6); font-size: 0.8rem;">Icon</label>
+                        <input type="text" class="table-search" style="width: 100%;" value="" data-field="icon">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; color: rgba(255,255,255,0.6); font-size: 0.8rem;">Color</label>
+                        <input type="text" class="table-search" style="width: 100%;" value="#667eea" data-field="color">
+                    </div>
+                </div>
+            `;
+            return linkEl;
+        }
+
+        // Remove link
+        function removeLink(sectionIndex, linkIndexOrElement) {
+            if (typeof linkIndexOrElement === 'number') {
+                // Remove by indices
+                const sections = document.querySelectorAll('#linkSectionsContainer .section-item');
+                if (sections[sectionIndex]) {
+                    const links = sections[sectionIndex].querySelectorAll('.link-item');
+                    if (links[linkIndexOrElement]) {
+                        links[linkIndexOrElement].remove();
+                    }
+                }
+            } else {
+                // Remove by element
+                linkIndexOrElement.remove();
+            }
         }
 
         // Toast notification
@@ -751,86 +947,10 @@
             window.location.href = '/';
         }
 
-        // Load settings
-        async function loadSettings() {
-            try {
-                const response = await fetch('/admin/settings');
-                const settings = await response.json();
-                
-                document.getElementById('maxRequestsPerSecond').value = settings.maxRequestsPerSecond;
-                document.getElementById('blockDuration').value = settings.blockDuration / 1000; // Convert to seconds
-                document.getElementById('windowSize').value = settings.windowSize;
-            } catch (error) {
-                console.error('Failed to load settings:', error);
-            }
-        }
-
-        // Update settings
-        async function updateSettings() {
-            const maxRequestsPerSecond = parseInt(document.getElementById('maxRequestsPerSecond').value);
-            const blockDuration = parseInt(document.getElementById('blockDuration').value) * 1000; // Convert to milliseconds
-            const windowSize = parseInt(document.getElementById('windowSize').value);
-            
-            const statusDiv = document.getElementById('settingsStatus');
-            
-            if (isNaN(maxRequestsPerSecond) || maxRequestsPerSecond < 1 || maxRequestsPerSecond > 100) {
-                statusDiv.textContent = 'Max requests must be between 1-100';
-                statusDiv.style.color = '#f44336';
-                return;
-            }
-            
-            if (isNaN(blockDuration) || blockDuration < 10000 || blockDuration > 3600000) {
-                statusDiv.textContent = 'Block duration must be between 10-3600 seconds';
-                statusDiv.style.color = '#f44336';
-                return;
-            }
-            
-            if (isNaN(windowSize) || windowSize < 500 || windowSize > 10000) {
-                statusDiv.textContent = 'Window size must be between 500-10000 milliseconds';
-                statusDiv.style.color = '#f44336';
-                return;
-            }
-            
-            try {
-                const response = await fetch('/admin/settings', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        maxRequestsPerSecond,
-                        blockDuration,
-                        windowSize
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    statusDiv.textContent = 'Settings updated successfully!';
-                    statusDiv.style.color = '#4caf50';
-                    showToast('Rate limiting settings updated');
-                } else {
-                    statusDiv.textContent = 'Failed to update settings';
-                    statusDiv.style.color = '#f44336';
-                }
-            } catch (error) {
-                statusDiv.textContent = 'Error updating settings';
-                statusDiv.style.color = '#f44336';
-                showToast('Failed to update settings', true);
-            }
-        }
-
-        // Auto refresh every 30 seconds
-        setInterval(() => {
-            loadStats();
-        }, 30000);
-
         // Initial load
-        loadStats();
-        loadVisitors();
         loadBanned();
-        loadSettings();
+        loadSocialMedia();
+        loadLinkSections();
     </script>
 </body>
 </html>
