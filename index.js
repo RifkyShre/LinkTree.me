@@ -249,7 +249,12 @@ function trackVisitor(req, res, next) {
                req.ip ||
                req.connection.remoteAddress ||
                'unknown';
-    const now = Date.now();
+    
+    console.log('Visitor IP detected:', ip, 'Headers:', {
+        'x-forwarded-for': req.headers['x-forwarded-for'],
+        'x-real-ip': req.headers['x-real-ip'],
+        'req.ip': req.ip
+    });
     
     // Only track page visits, not API calls or static files
     if (req.path.startsWith('/admin/') || req.path === '/favicon.ico') {
@@ -269,12 +274,14 @@ function trackVisitor(req, res, next) {
             };
             setVisitor(ip, visitorData);
             addVisitorIP(ip); // Add to IP list
+            console.log('New visitor tracked:', ip);
         } else {
             // Existing visitor - update last visit and page views
             existingVisitor.lastVisit = now;
             existingVisitor.pageViews++;
             existingVisitor.path = req.path;
             setVisitor(ip, existingVisitor);
+            console.log('Existing visitor updated:', ip, 'pageViews:', existingVisitor.pageViews);
         }
         next();
     }).catch(error => {
