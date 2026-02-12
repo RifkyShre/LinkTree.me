@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
 const config = require('./config');
+const { kv } = require('@vercel/kv');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -26,10 +27,106 @@ app.use((req, res, next) => {
     next();
 });
 
-// In-memory storage for visitors and banned IPs
-const visitors = new Map();
-const bannedIPs = new Set();
-const requestCounts = new Map();
+// In-memory storage replaced with Vercel KV for persistence
+// KV Keys:
+// - visitors:{ip} -> visitor data object
+// - bannedIPs -> JSON array of banned IPs
+// - requestCounts:{ip} -> rate limit data object
+
+// Helper functions for KV operations
+async function getVisitor(ip) {
+    try {
+        return await kv.get(`visitors:${ip}`);
+    } catch (error) {
+        console.error('KV getVisitor error:', error);
+        return null;
+    }
+}
+
+async function setVisitor(ip, data) {
+    try {
+        await kv.set(`visitors:${ip}`, data);
+    } catch (error) {
+        console.error('KV setVisitor error:', error);
+    }
+}
+
+async function getBannedIPs() {
+    try {
+        const banned = await kv.get('bannedIPs');
+        return new Set(banned || []);
+    } catch (error) {
+        console.error('KV getBannedIPs error:', error);
+        return new Set();
+    }
+}
+
+async function addBannedIP(ip) {
+    try {
+        const banned = await getBannedIPs();
+        banned.add(ip);
+        await kv.set('bannedIPs', Array.from(banned));
+    } catch (error) {
+        console.error('KV addBannedIP error:', error);
+    }
+}
+
+async function removeBannedIP(ip) {
+    try {
+        const banned = await getBannedIPs();
+        banned.delete(ip);
+        await kv.set('bannedIPs', Array.from(banned));
+    } catch (error) {
+        console.error('KV removeBannedIP error:', error);
+    }
+}
+
+async function getRequestCount(ip) {
+    try {
+        return await kv.get(`requestCounts:${ip}`);
+    } catch (error) {
+        console.error('KV getRequestCount error:', error);
+        return null;
+    }
+}
+
+async function setRequestCount(ip, data) {
+    try {
+        await kv.set(`requestCounts:${ip}`, data);
+    } catch (error) {
+        console.error('KV setRequestCount error:', error);
+    }
+}
+
+async function deleteRequestCount(ip) {
+    try {
+        await kv.del(`requestCounts:${ip}`);
+    } catch (error) {
+        console.error('KV deleteRequestCount error:', error);
+    }
+}
+
+async function getAllVisitorIPs() {
+    try {
+        const ips = await kv.get('visitorIPs');
+        return ips || [];
+    } catch (error) {
+        console.error('KV getAllVisitorIPs error:', error);
+        return [];
+    }
+}
+
+async function addVisitorIP(ip) {
+    try {
+        const ips = await getAllVisitorIPs();
+        if (!ips.includes(ip)) {
+            ips.push(ip);
+            await kv.set('visitorIPs', ips);
+        }
+    } catch (error) {
+        console.error('KV addVisitorIP error:', error);
+    }
+}
 
 // Configurable rate limiting settings
 let rateLimitConfig = {
@@ -46,19 +143,29 @@ const BLOCK_DURATION = () => rateLimitConfig.blockDuration;
 const MAX_REQUESTS_PER_SECOND = () => rateLimitConfig.maxRequestsPerSecond;
 const WINDOW_SIZE = () => rateLimitConfig.windowSize;
 
-// Clean up old entries every 5 seconds
-setInterval(() => {
-    const now = Date.now();
-    for (const [ip, data] of requestCounts.entries()) {
-        if (now - data.lastRequest > WINDOW_SIZE()) {
-            requestCounts.delete(ip);
-        }
+// Clean up old request count entries every 5 seconds (KV version)
+setInterval(async () => {
+    try {
+        const now = Date.now();
+        // Note: In KV implementation, we don't actively clean up old entries
+        // as KV handles this automatically. This interval can be removed or
+        // modified if needed for other cleanup tasks.
+    } catch (error) {
+        console.error('Cleanup interval error:', error);
     }
 }, 5 * 1000);
 
+// Enable trust proxy for proper IP detection on Vercel
+app.set('trust proxy', true);
+
 // Rate limiting middleware - very lenient for legit users
 function rateLimiter(req, res, next) {
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    // Get real client IP (Vercel forwards it in x-forwarded-for)
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+               req.headers['x-real-ip'] ||
+               req.ip ||
+               req.connection.remoteAddress ||
+               'unknown';
     const now = Date.now();
     
     // Skip rate limiting untuk static files
@@ -69,81 +176,111 @@ function rateLimiter(req, res, next) {
     }
     
     // Check if banned FIRST - even admin IPs can be banned if needed
-    if (bannedIPs.has(ip)) {
-        return res.status(403).json({
-            error: 'Akses ditolak. IP Anda diblokir.',
-            contact: 'Hubungi administrator untuk unbanned.'
+    getBannedIPs().then(bannedIPs => {
+        if (bannedIPs.has(ip)) {
+            return res.status(403).json({
+                error: 'Akses ditolak. IP Anda diblokir.',
+                contact: 'Hubungi administrator untuk unbanned.'
+            });
+        }
+        
+        // Skip for admin IPs (localhost) - but only if not banned
+        if (ADMIN_IPS.has(ip)) {
+            return next();
+        }
+        
+        // Get request count from KV
+        getRequestCount(ip).then(data => {
+            if (!data) {
+                // First request
+                const newData = { count: 1, lastRequest: now, blockedUntil: 0 };
+                setRequestCount(ip, newData);
+                return next();
+            }
+            
+            // Check if blocked
+            if (now < data.blockedUntil) {
+                return res.status(429).json({
+                    error: 'Terlalu banyak permintaan. Silakan coba lagi nanti.',
+                    retryAfter: Math.ceil((data.blockedUntil - now) / 1000)
+                });
+            }
+            
+            // Reset count if window passed
+            if (now - data.lastRequest > WINDOW_SIZE()) {
+                data.count = 1;
+                data.lastRequest = now;
+                setRequestCount(ip, data);
+                return next();
+            }
+            
+            // Increment count
+            data.count++;
+            data.lastRequest = now;
+            
+            // Block only if REALLY excessive (bot behavior) - per second now
+            if (data.count > MAX_REQUESTS_PER_SECOND()) {
+                data.blockedUntil = now + BLOCK_DURATION();
+                setRequestCount(ip, data);
+                console.log(`🚫 Rate limit exceeded for IP: ${ip}. Blocked for ${BLOCK_DURATION()/1000} seconds.`);
+                return res.status(429).json({
+                    error: `Terlalu banyak permintaan per detik. Silakan coba lagi nanti.`,
+                    retryAfter: Math.ceil(BLOCK_DURATION() / 1000)
+                });
+            }
+            
+            setRequestCount(ip, data);
+            next();
+        }).catch(error => {
+            console.error('Rate limiter error:', error);
+            next(); // Continue on error to avoid blocking legit users
         });
-    }
-    
-    // Skip for admin IPs (localhost) - but only if not banned
-    if (ADMIN_IPS.has(ip)) {
-        return next();
-    }
-    
-    if (!requestCounts.has(ip)) {
-        requestCounts.set(ip, { count: 1, lastRequest: now, blockedUntil: 0 });
-        return next();
-    }
-    
-    const data = requestCounts.get(ip);
-    
-    // Check if blocked
-    if (now < data.blockedUntil) {
-        return res.status(429).json({
-            error: 'Terlalu banyak permintaan. Silakan coba lagi nanti.',
-            retryAfter: Math.ceil((data.blockedUntil - now) / 1000)
-        });
-    }
-    
-    // Reset count if window passed
-    if (now - data.lastRequest > WINDOW_SIZE()) {
-        data.count = 1;
-        data.lastRequest = now;
-        return next();
-    }
-    
-    // Increment count
-    data.count++;
-    data.lastRequest = now;
-    
-    // Block only if REALLY excessive (bot behavior) - per second now
-    if (data.count > MAX_REQUESTS_PER_SECOND()) {
-        data.blockedUntil = now + BLOCK_DURATION();
-        console.log(`🚫 Rate limit exceeded for IP: ${ip}. Blocked for ${BLOCK_DURATION()/1000} seconds.`);
-        return res.status(429).json({
-            error: `Terlalu banyak permintaan per detik. Silakan coba lagi nanti.`,
-            retryAfter: Math.ceil(BLOCK_DURATION() / 1000)
-        });
-    }
-    
-    next();
+    }).catch(error => {
+        console.error('Banned IPs check error:', error);
+        next(); // Continue on error
+    });
 }
 
 // Visitor tracking middleware
 function trackVisitor(req, res, next) {
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+    // Get real client IP (Vercel forwards it in x-forwarded-for)
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+               req.headers['x-real-ip'] ||
+               req.ip ||
+               req.connection.remoteAddress ||
+               'unknown';
     const now = Date.now();
     
-    if (!visitors.has(ip)) {
-        visitors.set(ip, {
-            firstVisit: now,
-            lastVisit: now,
-            pageViews: 0,
-            userAgent: req.headers['user-agent'] || 'Unknown',
-            path: req.path
-        });
-    } else {
-        const visitor = visitors.get(ip);
-        visitor.lastVisit = now;
-        visitor.path = req.path;
+    // Only track page visits, not API calls or static files
+    if (req.path.startsWith('/admin/') || req.path === '/favicon.ico') {
+        return next();
     }
     
-    // Increment page views
-    const visitor = visitors.get(ip);
-    visitor.pageViews++;
-    
-    next();
+    // Get existing visitor data from KV
+    getVisitor(ip).then(existingVisitor => {
+        if (!existingVisitor) {
+            // New visitor
+            const visitorData = {
+                firstVisit: now,
+                lastVisit: now,
+                pageViews: 1,
+                userAgent: req.headers['user-agent'] || 'Unknown',
+                path: req.path
+            };
+            setVisitor(ip, visitorData);
+            addVisitorIP(ip); // Add to IP list
+        } else {
+            // Existing visitor - update last visit and page views
+            existingVisitor.lastVisit = now;
+            existingVisitor.pageViews++;
+            existingVisitor.path = req.path;
+            setVisitor(ip, existingVisitor);
+        }
+        next();
+    }).catch(error => {
+        console.error('Visitor tracking error:', error);
+        next(); // Continue even if tracking fails
+    });
 }
 
 // Apply visitor tracking to all routes
@@ -172,7 +309,6 @@ function adminAuth(req, res, next) {
 
 // Simple admin auth middleware - bypasses banned IP check for admin access
 function adminAuthBypassBan(req, res, next) {
-    console.log('adminPassword defined:', typeof adminPassword, adminPassword);
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Basic ')) {
@@ -205,34 +341,49 @@ app.get('/', rateLimiter, (req, res) => {
 });
 
 // Admin API routes
-app.get('/admin/stats', adminAuth, (req, res) => {
-    const now = Date.now();
-    const oneDayAgo = now - (24 * 60 * 60 * 1000);
-    const oneHourAgo = now - (60 * 60 * 1000);
-    
-    let totalVisitors = 0;
-    let todayVisitors = 0;
-    let hourVisitors = 0;
-    
-    for (const [ip, data] of visitors.entries()) {
-        totalVisitors++;
-        if (data.lastVisit > oneDayAgo) {
-            todayVisitors++;
+app.get('/admin/stats', adminAuth, async (req, res) => {
+    try {
+        const now = Date.now();
+        const oneDayAgo = now - (24 * 60 * 60 * 1000);
+        const oneHourAgo = now - (60 * 60 * 1000);
+        
+        let totalVisitors = 0;
+        let todayVisitors = 0;
+        let hourVisitors = 0;
+        
+        // Get all visitor IPs
+        const visitorIPs = await getAllVisitorIPs();
+        
+        // Fetch visitor data for each IP
+        for (const ip of visitorIPs) {
+            const visitorData = await getVisitor(ip);
+            if (visitorData) {
+                totalVisitors++;
+                if (visitorData.lastVisit > oneDayAgo) {
+                    todayVisitors++;
+                }
+                if (visitorData.lastVisit > oneHourAgo) {
+                    hourVisitors++;
+                }
+            }
         }
-        if (data.lastVisit > oneHourAgo) {
-            hourVisitors++;
-        }
+        
+        // Get banned IPs count
+        const bannedIPs = await getBannedIPs();
+        
+        res.json({
+            totalVisitors,
+            todayVisitors,
+            hourVisitors,
+            bannedCount: bannedIPs.size,
+            activeConnections: hourVisitors,
+            uptime: process.uptime(),
+            rateLimitConfig: rateLimitConfig
+        });
+    } catch (error) {
+        console.error('Admin stats error:', error);
+        res.status(500).json({ error: 'Failed to get stats' });
     }
-    
-    res.json({
-        totalVisitors,
-        todayVisitors,
-        hourVisitors,
-        bannedCount: bannedIPs.size,
-        activeConnections: hourVisitors,
-        uptime: process.uptime(),
-        rateLimitConfig: rateLimitConfig
-    });
 });
 
 app.get('/admin/settings', adminAuth, (req, res) => {
@@ -255,55 +406,98 @@ app.post('/admin/settings', adminAuth, express.json(), (req, res) => {
     res.json({ success: true, message: 'Settings updated successfully', config: rateLimitConfig });
 });
 
-app.get('/admin/visitors', adminAuth, (req, res) => {
-    const visitorList = [];
-    for (const [ip, data] of visitors.entries()) {
-        visitorList.push({
-            ip,
-            firstVisit: new Date(data.firstVisit).toISOString(),
-            lastVisit: new Date(data.lastVisit).toISOString(),
-            pageViews: data.pageViews,
-            userAgent: data.userAgent.substring(0, 100),
-            currentPage: data.path
-        });
-    }
-    
-    // Sort by last visit descending
-    visitorList.sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
-    
-    res.json(visitorList);
-});
-
-app.get('/admin/banned', adminAuth, (req, res) => {
-    const bannedList = Array.from(bannedIPs);
-    res.json(bannedList);
-});
-
-app.post('/admin/ban', adminAuth, (req, res) => {
-    const ip = req.query.ip;
-    if (ip) {
-        bannedIPs.add(ip);
-        console.log(`🔨 IP banned: ${ip}`);
-        res.json({ success: true, message: `IP ${ip} telah dibanned` });
-    } else {
-        res.status(400).json({ error: 'IP parameter required' });
+app.get('/admin/visitors', adminAuth, async (req, res) => {
+    try {
+        const visitorList = [];
+        const visitorIPs = await getAllVisitorIPs();
+        
+        // Fetch data for each visitor IP
+        for (const ip of visitorIPs) {
+            const visitorData = await getVisitor(ip);
+            if (visitorData) {
+                visitorList.push({
+                    ip,
+                    firstVisit: new Date(visitorData.firstVisit).toISOString(),
+                    lastVisit: new Date(visitorData.lastVisit).toISOString(),
+                    pageViews: visitorData.pageViews,
+                    userAgent: visitorData.userAgent.substring(0, 100),
+                    currentPage: visitorData.path
+                });
+            }
+        }
+        
+        // Sort by last visit descending
+        visitorList.sort((a, b) => new Date(b.lastVisit) - new Date(a.lastVisit));
+        
+        res.json(visitorList);
+    } catch (error) {
+        console.error('Admin visitors error:', error);
+        res.status(500).json({ error: 'Failed to get visitors' });
     }
 });
 
-app.post('/admin/unban', adminAuthBypassBan, (req, res) => {
-    const ip = req.query.ip;
-    if (ip && bannedIPs.has(ip)) {
-        bannedIPs.delete(ip);
-        console.log(`✅ IP unbanned: ${ip}`);
-        res.json({ success: true, message: `IP ${ip} telah diunbanned` });
-    } else {
-        res.status(400).json({ error: 'IP tidak ditemukan atau tidak dibanned' });
+app.get('/admin/banned', adminAuth, async (req, res) => {
+    try {
+        const bannedIPs = await getBannedIPs();
+        const bannedList = Array.from(bannedIPs);
+        res.json(bannedList);
+    } catch (error) {
+        console.error('Admin banned error:', error);
+        res.status(500).json({ error: 'Failed to get banned IPs' });
     }
 });
 
-app.get('/admin/clear-visitors', adminAuth, (req, res) => {
-    visitors.clear();
-    res.json({ success: true, message: 'Visitor data cleared' });
+app.post('/admin/ban', adminAuth, async (req, res) => {
+    try {
+        const ip = req.query.ip;
+        if (ip) {
+            await addBannedIP(ip);
+            console.log(`🔨 IP banned: ${ip}`);
+            res.json({ success: true, message: `IP ${ip} telah dibanned` });
+        } else {
+            res.status(400).json({ error: 'IP parameter required' });
+        }
+    } catch (error) {
+        console.error('Admin ban error:', error);
+        res.status(500).json({ error: 'Failed to ban IP' });
+    }
+});
+
+app.post('/admin/unban', adminAuthBypassBan, async (req, res) => {
+    try {
+        const ip = req.query.ip;
+        const bannedIPs = await getBannedIPs();
+        if (ip && bannedIPs.has(ip)) {
+            await removeBannedIP(ip);
+            console.log(`✅ IP unbanned: ${ip}`);
+            res.json({ success: true, message: `IP ${ip} telah diunbanned` });
+        } else {
+            res.status(400).json({ error: 'IP tidak ditemukan atau tidak dibanned' });
+        }
+    } catch (error) {
+        console.error('Admin unban error:', error);
+        res.status(500).json({ error: 'Failed to unban IP' });
+    }
+});
+
+app.get('/admin/clear-visitors', adminAuth, async (req, res) => {
+    try {
+        // Get all visitor IPs
+        const visitorIPs = await getAllVisitorIPs();
+        
+        // Delete all visitor data
+        for (const ip of visitorIPs) {
+            await kv.del(`visitors:${ip}`);
+        }
+        
+        // Clear the visitor IPs list
+        await kv.set('visitorIPs', []);
+        
+        res.json({ success: true, message: 'Visitor data cleared' });
+    } catch (error) {
+        console.error('Admin clear visitors error:', error);
+        res.status(500).json({ error: 'Failed to clear visitors' });
+    }
 });
 
 // Admin panel page - bypasses banned IP check for admin access

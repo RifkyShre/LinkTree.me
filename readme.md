@@ -63,8 +63,8 @@ Example structure:
 ```js
 module.exports = {
   profile: {
-    name: "Caliph",
-    username: "caliph",
+    name: "RifkyShre",
+    username: "RifkyShre",
     bio: "You can’t sit around envying other people’s worlds. You have to go out and change your own.",
     avatar: "https://github.com/cabrata.png",
     verified: true
