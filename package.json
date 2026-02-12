@@ -24,11 +24,9 @@
   },
   "dependencies": {
     "@vercel/analytics": "^1.1.1",
-    "@vercel/kv": "^1.0.1",
     "compression": "^1.8.1",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
-    "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0"
   }
 }
