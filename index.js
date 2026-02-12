@@ -243,26 +243,64 @@ function rateLimiter(req, res, next) {
 
 // Visitor tracking middleware
 function trackVisitor(req, res, next) {
-    // Get real client IP (Vercel forwards it in x-forwarded-for)
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-               req.headers['x-real-ip'] ||
-               req.ip ||
-               req.connection.remoteAddress ||
-               'unknown';
+    // Enhanced IP detection for Vercel
+    let ip = 'unknown';
     
-    console.log('Visitor IP detected:', ip, 'Headers:', {
+    // Method 1: x-forwarded-for (most reliable for Vercel)
+    if (req.headers['x-forwarded-for']) {
+        // Take the first IP (real client IP)
+        ip = req.headers['x-forwarded-for'].split(',')[0].trim();
+    }
+    // Method 2: x-real-ip (fallback)
+    else if (req.headers['x-real-ip']) {
+        ip = req.headers['x-real-ip'];
+    }
+    // Method 3: cf-connecting-ip (Cloudflare, if used)
+    else if (req.headers['cf-connecting-ip']) {
+        ip = req.headers['cf-connecting-ip'];
+    }
+    // Method 4: Express req.ip
+    else if (req.ip) {
+        ip = req.ip;
+    }
+    // Method 5: Connection remote address
+    else if (req.connection && req.connection.remoteAddress) {
+        ip = req.connection.remoteAddress;
+    }
+    
+    // Clean up IPv4-mapped IPv6 addresses
+    if (ip.startsWith('::ffff:')) {
+        ip = ip.substring(7);
+    }
+    
+    console.log('=== VISITOR TRACKING DEBUG ===');
+    console.log('Final IP detected:', ip);
+    console.log('All headers:', {
         'x-forwarded-for': req.headers['x-forwarded-for'],
         'x-real-ip': req.headers['x-real-ip'],
-        'req.ip': req.ip
+        'cf-connecting-ip': req.headers['cf-connecting-ip'],
+        'req.ip': req.ip,
+        'remoteAddress': req.connection?.remoteAddress
     });
+    console.log('User-Agent:', req.headers['user-agent']);
+    console.log('Request path:', req.path);
+    console.log('================================');
     
     // Only track page visits, not API calls or static files
-    if (req.path.startsWith('/admin/') || req.path === '/favicon.ico') {
+    if (req.path.startsWith('/admin/') || req.path === '/favicon.ico' || req.path.startsWith('/css/') || req.path.startsWith('/js/') || req.path.startsWith('/img/')) {
+        console.log('Skipping tracking for:', req.path);
         return next();
     }
     
+    const now = Date.now();
+    
+    // Test KV connection first
+    console.log('Testing KV connection...');
+    
     // Get existing visitor data from KV
     getVisitor(ip).then(existingVisitor => {
+        console.log('KV getVisitor result for', ip, ':', existingVisitor ? 'EXISTS' : 'NOT FOUND');
+        
         if (!existingVisitor) {
             // New visitor
             const visitorData = {
@@ -272,20 +310,38 @@ function trackVisitor(req, res, next) {
                 userAgent: req.headers['user-agent'] || 'Unknown',
                 path: req.path
             };
-            setVisitor(ip, visitorData);
-            addVisitorIP(ip); // Add to IP list
-            console.log('New visitor tracked:', ip);
+            
+            console.log('Creating new visitor:', ip, visitorData);
+            
+            Promise.all([
+                setVisitor(ip, visitorData),
+                addVisitorIP(ip)
+            ]).then(() => {
+                console.log('✅ New visitor successfully saved to KV:', ip);
+                next();
+            }).catch(error => {
+                console.error('❌ Failed to save new visitor:', error);
+                next();
+            });
+            
         } else {
             // Existing visitor - update last visit and page views
             existingVisitor.lastVisit = now;
             existingVisitor.pageViews++;
             existingVisitor.path = req.path;
-            setVisitor(ip, existingVisitor);
-            console.log('Existing visitor updated:', ip, 'pageViews:', existingVisitor.pageViews);
+            
+            console.log('Updating existing visitor:', ip, 'pageViews:', existingVisitor.pageViews);
+            
+            setVisitor(ip, existingVisitor).then(() => {
+                console.log('✅ Existing visitor successfully updated in KV:', ip);
+                next();
+            }).catch(error => {
+                console.error('❌ Failed to update existing visitor:', error);
+                next();
+            });
         }
-        next();
     }).catch(error => {
-        console.error('Visitor tracking error:', error);
+        console.error('❌ KV getVisitor error:', error);
         next(); // Continue even if tracking fails
     });
 }
