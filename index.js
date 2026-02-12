@@ -274,54 +274,9 @@ app.get('/admin/visitors', adminAuth, (req, res) => {
     res.json(visitorList);
 });
 
-app.get('/admin/social-media', adminAuth, (req, res) => {
-    res.json(config.socialMedia);
-});
-
-app.post('/admin/social-media', adminAuth, express.json(), (req, res) => {
-    const { socialMedia } = req.body;
-    
-    if (!Array.isArray(socialMedia)) {
-        return res.status(400).json({ error: 'socialMedia must be an array' });
-    }
-    
-    // Validate social media structure
-    for (const item of socialMedia) {
-        if (!item.name || !item.icon || !item.url) {
-            return res.status(400).json({ error: 'Each social media item must have name, icon, and url' });
-        }
-    }
-    
-    config.socialMedia = socialMedia;
-    res.json({ success: true, message: 'Social media updated successfully', data: config.socialMedia });
-});
-
-app.get('/admin/link-sections', adminAuth, (req, res) => {
-    res.json(config.linkSections);
-});
-
-app.post('/admin/link-sections', adminAuth, express.json(), (req, res) => {
-    const { linkSections } = req.body;
-    
-    if (!Array.isArray(linkSections)) {
-        return res.status(400).json({ error: 'linkSections must be an array' });
-    }
-    
-    // Validate link sections structure
-    for (const section of linkSections) {
-        if (!section.title || !Array.isArray(section.links)) {
-            return res.status(400).json({ error: 'Each link section must have title and links array' });
-        }
-        
-        for (const link of section.links) {
-            if (!link.title || !link.url) {
-                return res.status(400).json({ error: 'Each link must have title and url' });
-            }
-        }
-    }
-    
-    config.linkSections = linkSections;
-    res.json({ success: true, message: 'Link sections updated successfully', data: config.linkSections });
+app.get('/admin/banned', adminAuth, (req, res) => {
+    const bannedList = Array.from(bannedIPs);
+    res.json(bannedList);
 });
 
 app.post('/admin/ban', adminAuth, (req, res) => {
