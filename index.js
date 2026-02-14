@@ -6,7 +6,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Admin password for basic authentication
-const adminPassword = 'admin123';
+// const adminPassword = 'admin123'; // Disabled - admin panel removed
 
 // Security headers and caching for best practices
 app.use((req, res, next) => {
@@ -149,48 +149,48 @@ function trackVisitor(req, res, next) {
 // Apply visitor tracking to all routes
 app.use(trackVisitor);
 
-// Admin auth middleware
-function adminAuth(req, res, next) {
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Basic ')) {
-        res.setHeader('WWW-Authenticate', 'Basic realm="Admin Panel"');
-        return res.status(401).send('Authentication required');
-    }
-    
-    const auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');
-    const username = auth[0];
-    const password = auth[1];
-    
-    if (username === 'admin' && password === adminPassword) {
-        return next();
-    }
-    
-    res.setHeader('WWW-Authenticate', 'Basic realm="Admin Panel"');
-    return res.status(401).send('Invalid credentials');
-}
+// Admin auth middleware - disabled
+// function adminAuth(req, res, next) {
+//     const authHeader = req.headers.authorization;
+//     
+//     if (!authHeader || !authHeader.startsWith('Basic ')) {
+//         res.setHeader('WWW-Authenticate', 'Basic realm="Admin Panel"');
+//         return res.status(401).send('Authentication required');
+//     }
+//     
+//     const auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');
+//     const username = auth[0];
+//     const password = auth[1];
+//     
+//     if (username === 'admin' && password === adminPassword) {
+//         return next();
+//     }
+//     
+//     res.setHeader('WWW-Authenticate', 'Basic realm="Admin Panel"');
+//     return res.status(401).send('Invalid credentials');
+// }
 
-// Simple admin auth middleware - bypasses banned IP check for admin access
-function adminAuthBypassBan(req, res, next) {
-    console.log('adminPassword defined:', typeof adminPassword, adminPassword);
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Basic ')) {
-        res.setHeader('WWW-Authenticate', 'Basic realm="Admin Panel"');
-        return res.status(401).send('Authentication required');
-    }
-    
-    const auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');
-    const username = auth[0];
-    const password = auth[1];
-    
-    if (username === 'admin' && password === adminPassword) {
-        return next();
-    }
-    
-    res.setHeader('WWW-Authenticate', 'Basic realm="Admin Panel"');
-    return res.status(401).send('Invalid credentials');
-}
+// Simple admin auth middleware - bypasses banned IP check for admin access - disabled
+// function adminAuthBypassBan(req, res, next) {
+//     console.log('adminPassword defined:', typeof adminPassword, adminPassword);
+//     const authHeader = req.headers.authorization;
+//     
+//     if (!authHeader || !authHeader.startsWith('Basic ')) {
+//         res.setHeader('WWW-Authenticate', 'Basic realm="Admin Panel"');
+//         return res.status(401).send('Authentication required');
+//     }
+//     
+//     const auth = new Buffer(authHeader.split(' ')[1], 'base64').toString().split(':');
+//     const username = auth[0];
+//     const password = auth[1];
+//     
+//     if (username === 'admin' && password === adminPassword) {
+//         return next();
+//     }
+//     
+//     res.setHeader('WWW-Authenticate', 'Basic realm="Admin Panel"');
+//     return res.status(401).send('Invalid credentials');
+// }
 
 // Set EJS as templating engine
 app.set('view engine', 'ejs');
@@ -204,83 +204,82 @@ app.get('/', rateLimiter, (req, res) => {
   res.render('index', { config });
 });
 
-// Admin API routes
-app.get('/admin/banned', adminAuth, (req, res) => {
-    const bannedList = Array.from(bannedIPs);
-    res.json(bannedList);
-});
+// Admin API routes - disabled
+// app.get('/admin/banned', adminAuth, (req, res) => {
+//     const bannedList = Array.from(bannedIPs);
+//     res.json(bannedList);
+// });
 
-app.post('/admin/ban', adminAuth, (req, res) => {
-    const ip = req.query.ip;
-    if (ip) {
-        bannedIPs.add(ip);
-        console.log(`🔨 IP banned: ${ip}`);
-        res.json({ success: true, message: `IP ${ip} telah dibanned` });
-    } else {
-        res.status(400).json({ error: 'IP parameter required' });
-    }
-});
+// app.post('/admin/ban', adminAuth, (req, res) => {
+//     const ip = req.query.ip;
+//     if (ip) {
+//         bannedIPs.add(ip);
+//         console.log(`🔨 IP banned: ${ip}`);
+//         res.json({ success: true, message: `IP ${ip} telah dibanned` });
+//     } else {
+//         res.status(400).json({ error: 'IP parameter required' });
+//     }
+// });
 
-app.post('/admin/unban', adminAuthBypassBan, (req, res) => {
-    const ip = req.query.ip;
-    if (ip && bannedIPs.has(ip)) {
-        bannedIPs.delete(ip);
-        console.log(`✅ IP unbanned: ${ip}`);
-        res.json({ success: true, message: `IP ${ip} telah diunbanned` });
-    } else {
-        res.status(400).json({ error: 'IP tidak ditemukan atau tidak dibanned' });
-    }
-});
+// app.post('/admin/unban', adminAuthBypassBan, (req, res) => {
+//     const ip = req.query.ip;
+//     if (ip && bannedIPs.has(ip)) {
+//         bannedIPs.delete(ip);
+//         console.log(`✅ IP unbanned: ${ip}`);
+//         res.json({ success: true, message: `IP ${ip} telah diunbanned` });
+//     } else {
+//         res.status(400).json({ error: 'IP tidak ditemukan atau tidak dibanned' });
+//     }
+// });
 
-// Social media management
-app.get('/admin/social-media', adminAuthBypassBan, (req, res) => {
-    res.json(config.socialMedia || []);
-});
+// Social media management - disabled
+// app.get('/admin/social-media', adminAuthBypassBan, (req, res) => {
+//     res.json(config.socialMedia || []);
+// });
 
-app.post('/admin/social-media', adminAuthBypassBan, express.json(), (req, res) => {
-    try {
-        config.socialMedia = req.body;
-        // Save to file (in a real app, you'd use a database)
-        const fs = require('fs');
-        const configPath = './config.js';
-        const configContent = `module.exports = ${JSON.stringify(config, null, 4)};`;
-        fs.writeFileSync(configPath, configContent);
-        
-        res.json({ success: true, message: 'Social media updated successfully' });
-    } catch (error) {
-        console.error('Error updating social media:', error);
-        res.status(500).json({ error: 'Failed to update social media' });
-    }
-});
+// app.post('/admin/social-media', adminAuthBypassBan, express.json(), (req, res) => {
+//     try {
+//         config.socialMedia = req.body;
+//         // Save to file (in a real app, you'd use a database)
+//         const fs = require('fs');
+//         const configPath = './config.js';
+//         const configContent = `module.exports = ${JSON.stringify(config, null, 4)};`;
+//         fs.writeFileSync(configPath, configContent);
+//         
+//         res.json({ success: true, message: 'Social media updated successfully' });
+//     } catch (error) {
+//         console.error('Error updating social media:', error);
+//         res.status(500).json({ error: 'Failed to update social media' });
+//     }
+// });
 
-// Link sections management
-app.get('/admin/link-sections', adminAuthBypassBan, (req, res) => {
-    res.json(config.linkSections || []);
-});
+// Link sections management - disabled
+// app.get('/admin/link-sections', adminAuthBypassBan, (req, res) => {
+//     res.json(config.linkSections || []);
+// });
 
-app.post('/admin/link-sections', adminAuthBypassBan, express.json(), (req, res) => {
-    try {
-        config.linkSections = req.body;
-        // Save to file (in a real app, you'd use a database)
-        const fs = require('fs');
-        const configPath = './config.js';
-        const configContent = `module.exports = ${JSON.stringify(config, null, 4)};`;
-        fs.writeFileSync(configPath, configContent);
-        
-        res.json({ success: true, message: 'Link sections updated successfully' });
-    } catch (error) {
-        console.error('Error updating link sections:', error);
-        res.status(500).json({ error: 'Failed to update link sections' });
-    }
-});
+// app.post('/admin/link-sections', adminAuthBypassBan, express.json(), (req, res) => {
+//     try {
+//         config.linkSections = req.body;
+//         // Save to file (in a real app, you'd use a database)
+//         const fs = require('fs');
+//         const configPath = './config.js';
+//         const configContent = `module.exports = ${JSON.stringify(config, null, 4)};`;
+//         fs.writeFileSync(configPath, configContent);
+//         
+//         res.json({ success: true, message: 'Link sections updated successfully' });
+//     } catch (error) {
+//         console.error('Error updating link sections:', error);
+//         res.status(500).json({ error: 'Failed to update link sections' });
+//     }
+// });
 
-// Admin panel page - bypasses banned IP check for admin access
-app.get('/admin', adminAuthBypassBan, (req, res) => {
-    res.render('admin', { config });
-});
+// Admin panel page - disabled
+// app.get('/admin', adminAuthBypassBan, (req, res) => {
+//     res.render('admin', { config });
+// });
 
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 Admin panel: http://localhost:${PORT}/admin`);
 });
